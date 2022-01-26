@@ -30,6 +30,7 @@ package com.amihaiemil.eoyaml;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import java.io.*;
+import java.nio.charset.Charset;
 
 /**
  * Yaml.
@@ -86,7 +87,25 @@ public final class Yaml {
      */
     public static YamlInput createYamlInput(final File input)
         throws FileNotFoundException {
-        return Yaml.createYamlInput(input, Boolean.FALSE);
+        return Yaml.createYamlInput(
+            input,
+            Boolean.FALSE);
+    }
+
+    /**
+     * Create a {@link YamlInput} from a File.
+     * @return YamlInput, reader of Yaml.
+     * @param input File to read from.
+     * @throws FileNotFoundException If the file is not found.
+     */
+    public static YamlInput createYamlInput(
+            final File input,
+            final Charset charset)
+            throws FileNotFoundException {
+        return Yaml.createYamlInput(
+            input,
+            charset,
+            Boolean.FALSE);
     }
 
     /**
@@ -109,12 +128,52 @@ public final class Yaml {
     }
 
     /**
+     * Create a {@link YamlInput} from a File.
+     * @return YamlInput, reader of Yaml.
+     * @param input File to read from.
+     * @param charset Charset to use.
+     * @param guessIndentation If set to true, we will try to guess the correct
+     *  indentation of misplaced lines. The default value is false
+     *  and an exception is thrown if indentation is not correct.
+     * @throws FileNotFoundException If the file is not found.
+     */
+    public static YamlInput createYamlInput(
+            final File input,
+            final Charset charset,
+            final boolean guessIndentation
+    ) throws FileNotFoundException {
+        return Yaml.createYamlInput(
+             new FileInputStream(input),
+             charset,
+             guessIndentation
+        );
+    }
+
+    /**
      * Create a {@link YamlInput} from a String.
      * @param input String to read from.
      * @return YamlInput, reader of Yaml.
      */
     public static YamlInput createYamlInput(final String input) {
-        return Yaml.createYamlInput(input, Boolean.FALSE);
+        return Yaml.createYamlInput(
+            input,
+            Boolean.FALSE);
+    }
+
+    /**
+     * Create a {@link YamlInput} from a String.
+     * @param input String to read from.
+     * @param charset Charset to use.
+     * @return YamlInput, reader of Yaml.
+     */
+    public static YamlInput createYamlInput(
+            final String input,
+            final Charset charset
+    ) {
+        return Yaml.createYamlInput(
+            input,
+            charset,
+            Boolean.FALSE);
     }
 
     /**
@@ -136,12 +195,50 @@ public final class Yaml {
     }
 
     /**
+     * Create a {@link YamlInput} from a String.
+     * @param input String to read from.
+     * @param charset Charset to use.
+     * @param guessIndentation If set to true, we will try to guess the correct
+     *  indentation of misplaced lines. The default value is false
+     *  and an exception is thrown if indentation is not correct.
+     * @return YamlInput, reader of Yaml.
+     */
+    public static YamlInput createYamlInput(
+            final String input,
+            final Charset charset,
+            final boolean guessIndentation
+    ) {
+        return Yaml.createYamlInput(
+            new ByteArrayInputStream(input.getBytes()),
+            charset,
+            guessIndentation
+        );
+    }
+
+    /**
      * Create a {@link YamlInput} from an InputStream.
      * @param input InputStream to read from.
      * @return YamlInput, reader of Yaml.
      */
     public static YamlInput createYamlInput(final InputStream input) {
-        return Yaml.createYamlInput(input, Boolean.FALSE);
+        return Yaml.createYamlInput(
+            input,
+            Boolean.FALSE);
+    }
+
+    /**
+     * Create a {@link YamlInput} from an InputStream.
+     * @param input InputStream to read from.
+     * @param charset Charset to use.
+     * @return YamlInput, reader of Yaml.
+     */
+    public static YamlInput createYamlInput(
+            final InputStream input,
+            final Charset charset) {
+        return Yaml.createYamlInput(
+            input,
+            charset,
+            Boolean.FALSE);
     }
 
     /**
@@ -157,6 +254,23 @@ public final class Yaml {
         final boolean guessIndentation
     ) {
         return new RtYamlInput(input, guessIndentation);
+    }
+
+    /**
+     * Create a {@link YamlInput} from an InputStream.
+     * @param input InputStream to read from.
+     * @param charset Charset to use.
+     * @param guessIndentation If set to true, we will try to guess the correct
+     *  indentation of misplaced lines. The default value is false
+     *  and an exception is thrown if indentation is not correct.
+     * @return YamlInput, reader of Yaml.
+     */
+    public static YamlInput createYamlInput(
+            final InputStream input,
+            final Charset charset,
+            final boolean guessIndentation
+    ) {
+        return new RtYamlInput(input, charset, guessIndentation);
     }
 
     /**

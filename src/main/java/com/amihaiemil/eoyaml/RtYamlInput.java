@@ -31,6 +31,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -48,6 +49,11 @@ final class RtYamlInput implements YamlInput {
      * Source of the input.
      */
     private final InputStream source;
+
+    /**
+     * Charset of the reader.
+     */
+    private final Charset charset;
 
     /**
      * If set to true, we will try to guess the correct indentation
@@ -70,7 +76,19 @@ final class RtYamlInput implements YamlInput {
      *  the correct indentation of misplaced lines.
      */
     RtYamlInput(final InputStream source, final boolean guessIndentation) {
+        this(source, Charset.defaultCharset(), guessIndentation);
+    }
+
+    /**
+     * Ctor.
+     * @param source Given source.
+     * @param charset Charset of the reader.
+     * @param guessIndentation If set to true, we will try to guess
+     *  the correct indentation of misplaced lines.
+     */
+    RtYamlInput(final InputStream source, final Charset charset, final boolean guessIndentation) {
         this.source = source;
+        this.charset = charset;
         this.guessIndentation = guessIndentation;
     }
 
@@ -129,7 +147,7 @@ final class RtYamlInput implements YamlInput {
         final List<YamlLine> lines = new ArrayList<>();
         try (
             BufferedReader reader = new BufferedReader(
-                new InputStreamReader(this.source)
+                new InputStreamReader(this.source, charset)
             )
         ) {
             String line;
