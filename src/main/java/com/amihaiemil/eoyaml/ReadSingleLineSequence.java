@@ -41,7 +41,7 @@ import java.util.List;
  * </pre>
  *
  */
-public class ReadSingleLineSequence extends BaseYamlSequence {
+final class ReadSingleLineSequence extends BaseYamlSequence {
 
     /**
      * All lines of the YAML document.
