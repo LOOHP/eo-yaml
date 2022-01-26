@@ -31,6 +31,7 @@ import static com.amihaiemil.eoyaml.YamlLine.UNKNOWN_LINE_NUMBER;
 
 import com.amihaiemil.eoyaml.exceptions.YamlReadingException;
 import java.util.*;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -160,14 +161,14 @@ final class ReadYamlMapping extends BaseYamlMapping {
                 }
                 String key;
                 int colonPos = trimmed.indexOf(":");
-                final int doubleQuotePos = trimmed.indexOf("\"");
-                final int singleQuotePos = trimmed.indexOf("'");
+                final int doubleQuotePos = indexOf(trimmed, "(?<!\\\\)\"", 0);
+                final int singleQuotePos = indexOf(trimmed, "(?<!\\|')'(?!')", 0);
                 if(doubleQuotePos >= 0 && doubleQuotePos < colonPos) {
                     colonPos = trimmed.indexOf(
-                        ":", trimmed.indexOf("\"", doubleQuotePos + 1));
+                        ":", indexOf(trimmed, "(?<!\\\\)\"", doubleQuotePos + 1));
                 } else if(singleQuotePos >= 0 && singleQuotePos < colonPos) {
                     colonPos = trimmed.indexOf(
-                        ":", trimmed.indexOf("'", singleQuotePos + 1));
+                        ":", indexOf(trimmed, "(?<!\\|')'(?!')", singleQuotePos + 1));
                 }
                 if(trimmed.startsWith("-")) {
                     key = trimmed.substring(
@@ -334,5 +335,21 @@ final class ReadYamlMapping extends BaseYamlMapping {
             }
         }
         return value;
+    }
+
+    /**
+     * Find the first occurrence of a regex pattern starting at a specified index
+     * @param str The string to match against
+     * @param regex The regex pattern
+     * @param start The starting index
+     * @return The first matching index
+     */
+    private int indexOf(String str, String regex, int start) {
+        Matcher matcher = Pattern.compile(regex).matcher(str);
+        if (matcher.find(start)) {
+            return matcher.start();
+        } else {
+            return -1;
+        }
     }
 }
