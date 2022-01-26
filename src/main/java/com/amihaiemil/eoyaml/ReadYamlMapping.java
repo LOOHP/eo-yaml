@@ -158,16 +158,33 @@ final class ReadYamlMapping extends BaseYamlMapping {
                 if(!trimmed.contains(":")) {
                     continue;
                 }
-                final String key;
+                String key;
+                int colonPos = trimmed.indexOf(":");
+                final int doubleQuotePos = trimmed.indexOf("\"");
+                final int singleQuotePos = trimmed.indexOf("'");
+                if(doubleQuotePos >= 0 && doubleQuotePos < colonPos) {
+                    colonPos = trimmed.indexOf(
+                        ":", trimmed.indexOf("\"", doubleQuotePos + 1));
+                } else if(singleQuotePos >= 0 && singleQuotePos < colonPos) {
+                    colonPos = trimmed.indexOf(
+                        ":", trimmed.indexOf("'", singleQuotePos + 1));
+                }
                 if(trimmed.startsWith("-")) {
                     key = trimmed.substring(
-                        1, trimmed.indexOf(":")
+                        1, colonPos
                     ).trim();
                 } else {
                     key = trimmed.substring(
-                        0, trimmed.indexOf(":")
+                        0, colonPos
                     ).trim();
                 }
+                if(trimmed.startsWith("\"")
+                    || trimmed.startsWith("'")
+                ) {
+                    key = key.substring(
+                        1, key.length() - 1
+                    );
+                } 
                 if(!key.isEmpty()) {
                     keys.add(new PlainStringScalar(key));
                 }

@@ -185,16 +185,29 @@ final class RtYamlPrinter implements YamlPrinter {
         while(valuesIt.hasNext()) {
             final YamlNode node = valuesIt.next();
             this.printPossibleComment(node, alignment.toString());
-            this.writer
-                .append(alignment)
-                .append("-");
-            if (node instanceof Scalar) {
-                this.printNode(node, false, 0);
-            } else  {
-                this.printNode(node, true, indentation + 2);
-            }
-            if(valuesIt.hasNext()) {
-                this.writer.append(newLine);
+            if (node instanceof ReadSingleLineSequence.ReadSingleLineSequencePlainLiteralScalar) {
+                this.printNode(node, false, false, 0);
+                if (valuesIt.hasNext()) {
+                    this.writer.append(", ");
+                }
+            } else {
+                this.writer
+                        .append(alignment)
+                        .append("-");
+                if (node instanceof Scalar) {
+                    this.printNode(node, false, 0);
+                } else {
+                    if (node instanceof ReadSingleLineSequence) {
+                        this.writer.append(" [");
+                        this.printNode(node, false, false, 0);
+                        this.writer.append("]");
+                    } else {
+                        this.printNode(node, true, indentation + 2);
+                    }
+                }
+                if (valuesIt.hasNext()) {
+                    this.writer.append(newLine);
+                }
             }
         }
     }
@@ -240,15 +253,17 @@ final class RtYamlPrinter implements YamlPrinter {
                 .append(
                     this.indent(scalar.value(), indentation + 2)
                 );
+        } else if (scalar instanceof ReadSingleLineSequence.ReadSingleLineSequencePlainLiteralScalar) {
+            this.writer.append(new Escaped(scalar).value());
         } else {
             final Comment comment = scalar.comment();
-            if(comment instanceof ScalarComment) {
-                this.writer.append(
+            this.writer.append(
                     this.indent(
-                        new Escaped(scalar).value(),
-                        0
+                            new Escaped(scalar).value(),
+                            0
                     )
-                );
+            );
+            if(comment instanceof ScalarComment) {
                 final ScalarComment scalarComment = (ScalarComment) comment;
 
                 if(!scalarComment.inline().value().isEmpty()) {
@@ -269,8 +284,26 @@ final class RtYamlPrinter implements YamlPrinter {
      * @throws IOException If any I/O error occurs.
      */
     private void printNode(
+            final YamlNode node,
+            final boolean onNewLine,
+            final int indentation
+    ) throws IOException {
+        printNode(node, onNewLine, true, indentation);
+    }
+
+    /**
+     * This method should be used when printing children
+     * nodes of a complex Node (mapping, scalar, stream etc).
+     * @param node YAML Node to print.
+     * @param onNewLine Should the child node be printed on a new line?
+     * @param prependSpace Should a space be printed before the child node if it is not on a new line?
+     * @param indentation Indentation of the print.
+     * @throws IOException If any I/O error occurs.
+     */
+    private void printNode(
         final YamlNode node,
         final boolean onNewLine,
+        final boolean prependSpace,
         final int indentation
     ) throws IOException {
         if (node == null || node.isEmpty()) {
@@ -284,7 +317,7 @@ final class RtYamlPrinter implements YamlPrinter {
         } else {
             if (onNewLine) {
                 this.writer.append(System.lineSeparator());
-            } else {
+            } else if (prependSpace) {
                 this.writer.append(" ");
             }
             if (node instanceof Scalar) {
