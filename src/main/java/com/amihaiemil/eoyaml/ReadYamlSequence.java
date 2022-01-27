@@ -27,7 +27,9 @@
  */
 package com.amihaiemil.eoyaml;
 
-import java.util.*;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * YamlSequence read from somewhere.
@@ -145,15 +147,29 @@ final class ReadYamlSequence extends BaseYamlSequence {
                     || trimmed.endsWith(">")
                 ) {
                     kids.add(
-                        this.significant.toYamlNode(
-                            line, this.guessIndentation
-                        )
+                            this.significant.toYamlNode(
+                                    line, this.guessIndentation
+                            )
                     );
+                } else if (trimmed.matches("^-[ ]*\\{}")) {
+                    kids.add(new EmptyYamlMapping(new ReadYamlMapping(
+                            line.number(),
+                            this.all.line(line.number()),
+                            this.all,
+                            this.guessIndentation
+                    )));
+                } else if (trimmed.matches("^-[ ]*\\[]")) {
+                    kids.add(new EmptyYamlSequence(new ReadYamlSequence(
+                            this.all.line(line.number()),
+                            this.all,
+                            this.guessIndentation
+                    )));
                 } else {
                     if(this.mappingStartsAtDash(line)) {
                         kids.add(
                             new ReadYamlMapping(
-                                new RtYamlLine("", line.number()-1),
+                                line.number() + 1,
+                                this.all.line(line.number() - 1),
                                 this.all,
                                 this.guessIndentation
                             )
@@ -169,6 +185,7 @@ final class ReadYamlSequence extends BaseYamlSequence {
 
     @Override
     public Comment comment() {
+        boolean documentComment = this.previous.number() < 0;
         //@checkstyle LineLength (50 lines)
         return new ReadComment(
             new Backwards(
@@ -178,7 +195,7 @@ final class ReadYamlSequence extends BaseYamlSequence {
                             this.all,
                             line -> {
                                 final boolean skip;
-                                if(this.previous.number() < 0) {
+                                if(documentComment) {
                                     if(this.significant.iterator().hasNext()) {
                                         skip = line.number() >= this.significant
                                                 .iterator().next().number();
@@ -190,12 +207,12 @@ final class ReadYamlSequence extends BaseYamlSequence {
                                 }
                                 return skip;
                             },
-                            line -> line.trimmed().startsWith("---"),
                             line -> line.trimmed().startsWith("..."),
                             line -> line.trimmed().startsWith("%"),
                             line -> line.trimmed().startsWith("!!")
                         )
-                    )
+                    ),
+                    documentComment
                 )
             ),
             this

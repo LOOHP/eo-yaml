@@ -34,12 +34,25 @@ package com.amihaiemil.eoyaml;
  * @since 1.0.0
  */
 interface YamlLine extends Comparable<YamlLine> {
+    /**
+     * Indicates we don't know or don't have a line number for the given
+     * comment (may not have come from a file).
+     */
+    int UNKNOWN_LINE_NUMBER = -1;
 
     /**
      * The line's trimmed contents with comments, aliases etc removed.
-     * @return String contents.
+     * @return Trimmed string (leading and trailing spaces) contents.
      */
     String trimmed();
+
+    /**
+     * The line's contents with spaces, tabs, etc maintained.
+     * @param previousIndent How deeply nested is the Yaml line - this is used
+     *                       to remove leading spaces.
+     * @return String line contents.
+     */
+    String contents(int previousIndent);
 
     /**
      * Return the comment, if any, from this line.
@@ -78,13 +91,18 @@ interface YamlLine extends Comparable<YamlLine> {
         }
 
         @Override
+        public String contents(final int previousIndent) {
+            return "";
+        }
+
+        @Override
         public String comment() {
             return "";
         }
 
         @Override
         public int number() {
-            return -1;
+            return UNKNOWN_LINE_NUMBER;
         }
 
         @Override

@@ -77,15 +77,14 @@ public final class YamlSequencePrintTest {
      */
     @Test
     public void printsBuiltYamlSequenceWithAllNodes() throws Exception {
+        Scalar block = Yaml.createYamlScalarBuilder()
+                .addLine("literal")
+                .addLine("block")
+                .addLine("scalar")
+                .buildLiteralBlockScalar();
         final YamlSequence built = Yaml.createYamlSequenceBuilder()
             .add("plain scalar")
-            .add(
-                Yaml.createYamlScalarBuilder()
-                    .addLine("literal")
-                    .addLine("block")
-                    .addLine("scalar")
-                    .buildLiteralBlockScalar()
-            )
+            .add(block)
             .add(
                 Yaml.createYamlScalarBuilder()
                     .addLine("a scalar folded")
@@ -99,12 +98,20 @@ public final class YamlSequencePrintTest {
                     .build()
             )
             .add(
+                Yaml.createYamlMappingBuilder()
+                    .add("key", block)
+                    .build()
+            )
+            .add(
                 Yaml.createYamlSequenceBuilder()
                     .add("a sequence")
                     .add("of plain scalars")
                     .add("as child")
                     .build()
             )
+            .add(Yaml.createYamlSequenceBuilder().build())
+            .add(Yaml.createYamlMappingBuilder().build())
+            .add(" ")
             .build();
         MatcherAssert.assertThat(
             built.toString(),
@@ -115,7 +122,7 @@ public final class YamlSequencePrintTest {
     }
 
     /**
-     * An empty YamlSequence value is printed as null.
+     * An empty YamlSequence value is printed as empty sequence ([]).
      */
     @Test
     public void printsEmptySequenceAsNull() {
@@ -127,7 +134,7 @@ public final class YamlSequencePrintTest {
         final StringBuilder expected = new StringBuilder();
         expected
             .append("- value1").append(System.lineSeparator())
-            .append("- null").append(System.lineSeparator())
+            .append("- []").append(System.lineSeparator())
             .append("- value2");
         MatcherAssert.assertThat(
             sequence.toString(),
@@ -158,7 +165,7 @@ public final class YamlSequencePrintTest {
     }
 
     /**
-     * An empty YamlMapping value is printed as null.
+     * An empty YamlMapping value is printed as empty mapping ({}).
      */
     @Test
     public void printsEmptyMappingAsNull() {
@@ -170,7 +177,7 @@ public final class YamlSequencePrintTest {
         final StringBuilder expected = new StringBuilder();
         expected
             .append("- value1").append(System.lineSeparator())
-            .append("- null").append(System.lineSeparator())
+            .append("- {}").append(System.lineSeparator())
             .append("- value2");
         MatcherAssert.assertThat(
             sequence.toString(),

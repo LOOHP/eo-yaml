@@ -27,6 +27,7 @@
  */
 package com.amihaiemil.eoyaml;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -1079,5 +1080,94 @@ public final class ReadYamlMappingTest {
             map.string("a-key"),
             Matchers.equalTo("someValue")
         );
+    }
+
+    /**
+     * ReadYamlMapping returns the correct value for substring matching of keys.
+     */
+    @Test
+    public void returnsValueOfStringKeys() {
+        final List<YamlLine> lines = new ArrayList<>();
+        lines.add(new RtYamlLine("aa: ", 0));
+        lines.add(new RtYamlLine("  x: 1", 1));
+        lines.add(new RtYamlLine("a: ", 2));
+        lines.add(new RtYamlLine("  x: 2", 3));
+        final YamlMapping map = new ReadYamlMapping(new AllYamlLines(lines));
+        MatcherAssert.assertThat(
+                map.value("a").asMapping().string("x"),
+                Matchers.equalTo("2")
+        );
+    }
+
+    /**
+     * ReadYamlMapping returns the correct value for substring matching of keys.
+     */
+    @Test
+    public void returnsValueOfStringKeysWithDashesAndSpaces() {
+        final List<YamlLine> lines = new ArrayList<>();
+        lines.add(new RtYamlLine("def:", 0));
+        lines.add(new RtYamlLine("  -  aa:", 1));
+        lines.add(new RtYamlLine("      x: 1", 2));
+        lines.add(new RtYamlLine("  - a:", 3));
+        lines.add(new RtYamlLine("      x: 2", 4));
+        final YamlMapping map = new ReadYamlMapping(new AllYamlLines(lines));
+        Collection<YamlNode> values = map.value("def").asSequence().values();
+        YamlNode firstValue = values.iterator().next();
+        MatcherAssert.assertThat(
+                firstValue.asMapping().value("aa").asMapping().string("x"),
+                Matchers.equalTo("1")
+        );
+    }
+
+    /**
+     * ReadYamlMapping returns the correct value for empty maps and sequences.
+     */
+    @Test
+    public void dontTurnEmptyMapsAndArraysIntoStrings() {
+        final List<YamlLine> lines = new ArrayList<>();
+        lines.add(new RtYamlLine("# A", 0));
+        lines.add(new RtYamlLine("def: {}", 1));
+        lines.add(new RtYamlLine("# B", 2));
+        lines.add(new RtYamlLine("ghi: []", 3));
+        final YamlMapping map = new ReadYamlMapping(new AllYamlLines(lines));
+        YamlMapping actualMap = map.value("def").asMapping();
+        YamlMapping expectedMap = Yaml.createYamlMappingBuilder().build("A");
+        MatcherAssert.assertThat(
+                actualMap,
+                Matchers.equalTo(expectedMap)
+        );
+        MatcherAssert.assertThat(
+                actualMap.comment().value(),
+                Matchers.equalTo(expectedMap.comment().value())
+        );
+        YamlSequence actualSeq = map.value("ghi").asSequence();
+        YamlSequence expectedSeq = Yaml.createYamlSequenceBuilder().build("B");
+        MatcherAssert.assertThat(
+                actualSeq,
+                Matchers.equalTo(expectedSeq)
+        );
+        MatcherAssert.assertThat(
+                actualSeq.comment().value(),
+                Matchers.equalTo(expectedSeq.comment().value())
+        );
+    }
+
+    /**
+     * ReadYamlMapping can be created from another YamlMapping.
+     * @throws IOException If something goes wrong.
+     */
+    @Test
+    public void shouldReadFromAnotherFromYamlMapping()
+        throws IOException {
+        YamlMapping yaml = Yaml.createYamlMappingBuilder()
+            .add("key1", "Some value?")
+            .add("key2", "Some other value.")
+            .build();
+        YamlMapping copy = Yaml.createYamlInput(yaml.toString())
+            .readYamlMapping();
+        MatcherAssert.assertThat(copy.string("key1"), Matchers
+            .equalTo("Some value?"));
+        MatcherAssert.assertThat(copy.string("key2"), Matchers
+            .equalTo("Some other value."));
     }
 }

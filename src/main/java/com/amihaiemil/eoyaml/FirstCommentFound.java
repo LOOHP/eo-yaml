@@ -48,13 +48,11 @@ final class FirstCommentFound implements YamlLines {
     private final YamlLines lines;
 
     /**
-     * Are we looking for inline comments?
-     * E.g. Comments after a scalar:
-     * <pre>
-     *   some: scalar # this comment
-     * </pre>
+     * We need this flag to distinguish between the comment
+     * of the overall YAML document and the comment on top
+     * of the very first node.
      */
-    private final boolean inLine;
+    private final boolean documentComment;
 
     /**
      * Ctor.
@@ -67,11 +65,12 @@ final class FirstCommentFound implements YamlLines {
     /**
      * Ctor.
      * @param lines The Yaml lines where we look for the comment.
-     * @param inLine Looking for inline comment or not?
+     * @param documentComment Are we looking for the comment of
+     *  the overall YAML?
      */
-    FirstCommentFound(final YamlLines lines, final boolean inLine) {
+    FirstCommentFound(final YamlLines lines, final boolean documentComment) {
         this.lines = lines;
-        this.inLine = inLine;
+        this.documentComment = documentComment;
     }
 
     /**
@@ -80,22 +79,11 @@ final class FirstCommentFound implements YamlLines {
      */
     @Override
     public Iterator<YamlLine> iterator() {
-        Iterator<YamlLine> iterator = this.lines.iterator();
-        if (iterator.hasNext()) {
-            final List<YamlLine> comment = new ArrayList<>();
-            while (iterator.hasNext()) {
-                YamlLine line = iterator.next();
-                if(!line.comment().isEmpty()) {
-                    if(line.trimmed().startsWith("#")) {
-                        comment.add(line);
-                    } else if(this.inLine) {
-                        comment.add(line);
-                    }
-                } else {
-                    break;
-                }
-            }
-            iterator = comment.iterator();
+        final Iterator<YamlLine> iterator;
+        if(this.documentComment) {
+            iterator = this.documentComment();
+        } else {
+            iterator = this.nodeComment();
         }
         return iterator;
     }
@@ -111,5 +99,61 @@ final class FirstCommentFound implements YamlLines {
         final boolean guessIndentation
     ) {
         return this.lines.toYamlNode(prev, guessIndentation);
+    }
+
+    /**
+     * Node comment. We are taking all the comment lines
+     * from above the node and stop when we find a non-comment
+     * line or the dash line (---), which signifies the start
+     * of the document: the start of the document is the end
+     * of the first node's comment, any comment above that is
+     * the comment of the overall YAML document..
+     * @return Iterator of YamlLine.
+     */
+    private Iterator<YamlLine> nodeComment() {
+        Iterator<YamlLine> iterator = this.lines.iterator();
+        final List<YamlLine> comment = new ArrayList<>();
+        while (iterator.hasNext()) {
+            final YamlLine line = iterator.next();
+            boolean hasComment = !line.comment().isEmpty();
+            boolean notYamlStart = !"---".equals(line.trimmed());
+            if(notYamlStart && hasComment) {
+                if(line.trimmed().startsWith("#")) {
+                    comment.add(line);
+                }
+            } else {
+                break;
+            }
+        }
+        iterator = comment.iterator();
+        return iterator;
+    }
+
+    /**
+     * Document comment. We are interested only in the comment-lines
+     * which are above the "---" marker (the YAML document start-marker).
+     * @return Iterator of YamlLine.
+     */
+    private Iterator<YamlLine> documentComment() {
+        final List<YamlLine> comment = new ArrayList<>();
+        Iterator<YamlLine> iterator = this.lines.iterator();
+        while (iterator.hasNext()) {
+            YamlLine line = iterator.next();
+            if("---".equals(line.trimmed())) {
+                while(iterator.hasNext()) {
+                    line = iterator.next();
+                    if(!line.comment().isEmpty()) {
+                        if(line.trimmed().startsWith("#")) {
+                            comment.add(line);
+                        }
+                    } else if (!line.trimmed().isEmpty()){
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+        iterator = comment.iterator();
+        return iterator;
     }
 }

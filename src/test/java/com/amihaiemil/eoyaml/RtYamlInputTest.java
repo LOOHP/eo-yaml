@@ -588,11 +588,23 @@ public final class RtYamlInputTest {
         MatcherAssert.assertThat(
             Yaml.createYamlInput(
                 "|" + System.lineSeparator()
-              + "line1" + System.lineSeparator()
-              + "line2"
+              + "  line1" + System.lineSeparator()
+              + "  line2"
             ).readLiteralBlockScalar().value(),
-            Matchers.equalTo("line1" + System.lineSeparator() + "line2")
+            Matchers.equalTo(
+                    "line1" + System.lineSeparator()
+                            + "line2" + System.lineSeparator())
         );
+    }
+
+    /**
+     * RtYamlInput can read a folded block scalar with document
+     * start/end markers.
+     * @throws Exception If something goes wrong.
+     */
+    @Test
+    public void readsLiteralBlockScalarWithDocumentStartEnd()
+            throws Exception {
         MatcherAssert.assertThat(
             Yaml.createYamlInput(
                 "---" + System.lineSeparator()
@@ -601,7 +613,9 @@ public final class RtYamlInputTest {
               + "line2" + System.lineSeparator()
               + "..."
             ).readLiteralBlockScalar().value(),
-            Matchers.equalTo("line1" + System.lineSeparator() + "line2")
+            Matchers.equalTo(
+                    "line1" + System.lineSeparator()
+                            + "line2" + System.lineSeparator())
         );
     }
 
@@ -680,6 +694,187 @@ public final class RtYamlInputTest {
             scalars.string(3),
             Matchers.equalTo(
                 "[scalar, like, flow, sequence]"
+            )
+        );
+    }
+
+    /**
+     * Compare two RtYamlLines by trimmed value.
+     */
+    @Test
+    public void comparesTo() {
+        RtYamlLine java = new RtYamlLine("Java", 1);
+        RtYamlLine scala = new RtYamlLine("Scala", 1);
+        MatcherAssert.assertThat(java.compareTo(scala), Matchers.lessThan(0));
+        MatcherAssert.assertThat(java.compareTo(java), Matchers.is(0));
+    }
+
+    /**
+     * Do a round-trip test on the minimal quoted-key sample file.
+     *
+     * @throws IOException When there's a problem reading the sample files.
+     */
+    @Test
+    public void quotedKeysMinTest() throws IOException {
+        final String filename = "quotedKeysMin.yml";
+        final String fileContents = readTestResource(filename).trim();
+
+        final YamlMapping read = new RtYamlInput(
+                new FileInputStream("src/test/resources/" + filename)
+        ).readYamlMapping();
+
+        MatcherAssert.assertThat(read.type(), Matchers.equalTo(Node.MAPPING));
+        MatcherAssert.assertThat(
+                read.asMapping().keys().size(),
+                Matchers.equalTo(1));
+
+        final YamlNode topLevelMapping = read.asMapping().value("a_mapping");
+        MatcherAssert.assertThat(
+                topLevelMapping.type(),
+                Matchers.equalTo(Node.MAPPING));
+        MatcherAssert.assertThat(
+                topLevelMapping.asMapping().keys().size(),
+                Matchers.equalTo(1));
+
+        final String pretty = read.toString().trim();
+
+        MatcherAssert.assertThat(pretty, Matchers.equalTo(fileContents));
+    }
+
+
+    /**
+     * Do a round-trip test on the maximal quoted-key sample file.
+     *
+     * @throws IOException When there's a problem reading the sample files.
+     */
+    @Test
+    public void quotedKeysMaxTest() throws IOException {
+        final String filename = "quotedKeysMax.yml";
+        final String fileContents = readTestResource(filename).trim();
+
+        final YamlMapping read = new RtYamlInput(
+                new FileInputStream("src/test/resources/" + filename)
+        ).readYamlMapping();
+
+        MatcherAssert.assertThat(read.type(), Matchers.equalTo(Node.MAPPING));
+        MatcherAssert.assertThat(
+                read.asMapping().keys().size(),
+                Matchers.equalTo(1));
+
+        final YamlNode topLevelMapping = read.asMapping().value("a_mapping");
+        MatcherAssert.assertThat(
+                topLevelMapping.type(),
+                Matchers.equalTo(Node.MAPPING));
+        MatcherAssert.assertThat(
+                topLevelMapping.asMapping().keys().size(),
+                Matchers.equalTo(6));
+
+        final String pretty = read.toString().trim();
+
+        MatcherAssert.assertThat(pretty, Matchers.equalTo(fileContents));
+    }
+
+    /**
+     * Corner case when key:value is on the same with sequence marker.
+     * <a href="https://github.com/decorators-squad/eo-yaml/issues/447">#447</a>
+     * @throws IOException If something is wrong.
+     */
+    @Test
+    public void shouldReadSequenceWhenFirstKeyIsOnTheSameLineFirstCase()
+        throws IOException {
+        final String fileName = "src/test/resources/issue_447_bug_mapping"
+            + "_case_1.yml";
+        final YamlMapping root = Yaml.createYamlInput(new File(fileName))
+            .readYamlMapping();
+        final YamlSequence variables = root.yamlSequence("root");
+        MatcherAssert.assertThat(variables, Matchers.iterableWithSize(3));
+    }
+
+    /**
+     * Corner case when key:value is on the same with sequence marker.
+     * <a href="https://github.com/decorators-squad/eo-yaml/issues/447">#447</a>
+     * @throws IOException If something is wrong.
+     */
+    @Test
+    public void shouldReadSequenceWhenFirstKeyIsOnTheSameLineSecondCase()
+        throws IOException {
+        final String fileName = "src/test/resources/issue_447_bug_mapping"
+            + "_case_2.yml";
+        final YamlMapping root = Yaml.createYamlInput(new File(fileName))
+            .readYamlMapping();
+        final YamlSequence variables = root.yamlSequence("root");
+        MatcherAssert.assertThat(variables, Matchers.iterableWithSize(3));
+        MatcherAssert.assertThat(
+            variables.yamlMapping(0).string("key"),
+            Matchers.equalTo("key1")
+        );
+        MatcherAssert.assertThat(
+            variables.yamlMapping(0).string("value"),
+            Matchers.equalTo("value1")
+        );
+        MatcherAssert.assertThat(
+            variables.yamlMapping(1).string("key"),
+            Matchers.equalTo("key2")
+        );
+        MatcherAssert.assertThat(
+            variables.yamlMapping(1).string("value"),
+            Matchers.equalTo("value2")
+        );
+        MatcherAssert.assertThat(
+            variables.yamlMapping(2).string("key"),
+            Matchers.equalTo("key3")
+        );
+        MatcherAssert.assertThat(
+            variables.yamlMapping(2).string("value"),
+            Matchers.equalTo("value3")
+        );
+    }
+
+    /**
+     * Corner case when key:value is on the same with sequence marker.
+     * <a href="https://github.com/decorators-squad/eo-yaml/issues/447">#447</a>
+     * @throws IOException If something is wrong.
+     */
+    @Test
+    public void shouldReadSequenceWhenFirstKeyIsOnTheSameLineThirdCase()
+        throws IOException {
+        final String fileName = "src/test/resources/issue_447_bug_mapping"
+            + "_case_3.yml";
+        final YamlMapping root = Yaml.createYamlInput(new File(fileName))
+            .readYamlMapping();
+        final YamlSequence variables = root.yamlSequence("root");
+        MatcherAssert.assertThat(variables, Matchers.iterableWithSize(3));
+    }
+
+    /**
+     * Corner case when key:value is on the same with sequence marker.
+     * <a href="https://github.com/decorators-squad/eo-yaml/issues/447">#447</a>
+     * and based on
+     * <a href="https://github.com/decorators-squad/eo-yaml/pull/416">PR</a>
+     * @throws IOException If something is wrong.
+     */
+    @Test
+    public void shouldReadSequenceWhenFirstKeyIsOnTheSameLineFourthCase()
+        throws IOException {
+        final String fileName = "src/test/resources/issue_447_bug_mapping"
+            + "_case_4.yml";
+        final YamlMapping root = Yaml.createYamlInput(new File(fileName))
+            .readYamlMapping();
+        MatcherAssert.assertThat(
+            root,
+            Matchers.equalTo(
+                Yaml.createYamlMappingBuilder()
+                    .add("key", "value")
+                    .add("seqMap", Yaml.createYamlSequenceBuilder()
+                        .add(Yaml.createYamlMappingBuilder()
+                            .add("alfa", "b")
+                            .build())
+                        .add(Yaml.createYamlMappingBuilder()
+                            .add("this", "isSkiped")
+                            .build())
+                        .build())
+                    .add("key2", "value")
+                    .build()
             )
         );
     }

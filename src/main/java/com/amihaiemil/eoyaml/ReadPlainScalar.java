@@ -27,6 +27,9 @@
  */
 package com.amihaiemil.eoyaml;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * A plain scalar value read from somewhere.
  * @author Mihai Andronace (amihaiemil@gmail.com)
@@ -34,6 +37,46 @@ package com.amihaiemil.eoyaml;
  * @since 3.1.3
  */
 final class ReadPlainScalar extends BaseScalar {
+
+    /**
+     * Pattern to match scalars in mappings or sequences.
+     *
+     * Ignore zero or more spaces and a hyphen (-) followed by one
+     * or more spaces.
+     *
+     * A quoted scalar literal is inside:
+     *  - ('(?:[^'\\]|\\.)*') : a single (') quoted string or
+     *  - ("(?:[^"\\]|\\.)*") : double (") quoted string
+     *
+     * A scalar for a mapping are characters after:
+     *  - .*:[ ]+(.*) : Any characters before a colon followed by
+     *    one or more spaces.
+     *
+     * The sequence scalar is:
+     *   - -[ ]+(.*) : Any characters after a hyphen (-) and one more spaces.
+     */
+    private static final Pattern QUOTED_LITERAL_MAP_SEQ = Pattern.compile("^("
+            + "[ ]*(-[ ]+)"
+                + "(('(?:[^'\\\\]|\\\\.)*')|"
+                + "(\"(?:[^\"\\\\]|\\\\.)*\"))|"
+            + "(.*:[ ]+(.*))|"
+            + "(-[ ]+(.*))"
+            + ")$");
+
+    /**
+     * Regex group index that matches quoted literals.
+     */
+    private static final int QUOTED_LITERAL_GROUP = 3;
+
+    /**
+     * Regex group index that matches scalar values of mappings.
+     */
+    private static final int MAPPING_GROUP = 7;
+
+    /**
+     * Regex group index that matches scalar value of non-quotes sequences.
+     */
+    private static final int SEQUENCE_GROUP = 9;
 
     /**
      * All YAML Lines of the document.
@@ -68,17 +111,15 @@ final class ReadPlainScalar extends BaseScalar {
      */
     @Override
     public String value() {
-        final String value;
-        final String trimmed = this.scalar.trimmed();
-        if(this.escapedSequenceScalar(this.scalar)) {
-            value = trimmed.substring(trimmed.indexOf('-')+1).trim();
-        } else {
-            if (trimmed.contains(":") && !trimmed.endsWith(":")) {
-                value = trimmed.substring(trimmed.indexOf(":") + 1).trim();
-            } else if (trimmed.startsWith("-") && trimmed.length() > 1) {
-                value = trimmed.substring(trimmed.indexOf('-') + 1).trim();
-            } else {
-                value = trimmed;
+        String value = this.scalar.trimmed();
+        Matcher matcher = this.escapedSequenceScalar(this.scalar);
+        if(matcher.matches()) {
+            if (matcher.group(QUOTED_LITERAL_GROUP) != null) {
+                value = matcher.group(QUOTED_LITERAL_GROUP);
+            } else if (matcher.group(MAPPING_GROUP) != null) {
+                value = matcher.group(MAPPING_GROUP).trim();
+            } else if (matcher.group(SEQUENCE_GROUP) != null) {
+                value = matcher.group(SEQUENCE_GROUP).trim();
             }
         }
         if("null".equals(value)) {
@@ -92,17 +133,37 @@ final class ReadPlainScalar extends BaseScalar {
     public Comment comment() {
         final Comment comment;
         if(this.scalar instanceof YamlLine.NullYamlLine) {
-            comment = new BuiltComment(this, "");
+            comment = new Concatenated(
+                new BuiltComment(this, ""),
+                new BuiltComment(this, "")
+            );
         } else {
-            comment = new ReadComment(
-                new FirstCommentFound(
+            final int lineNumber = this.scalar.number();
+            comment = new Concatenated(
+                new ReadComment(
+                    new Backwards(
+                        new FirstCommentFound(
+                            new Backwards(
+                                new Skip(
+                                    this.all,
+                                    line -> line.number() >= lineNumber,
+                                    line -> line.trimmed().startsWith("..."),
+                                    line -> line.trimmed().startsWith("%"),
+                                    line -> line.trimmed().startsWith("!!")
+                                )
+                            ),
+                            false
+                        )
+                    ),
+                    this
+                ),
+                new ReadComment(
                     new Skip(
                         this.all,
-                        line -> line.number() != this.scalar.number()
+                        line -> line.number() != lineNumber
                     ),
-                    Boolean.TRUE
-                ),
-                this
+                    this
+                )
             );
         }
         return comment;
@@ -136,9 +197,8 @@ final class ReadPlainScalar extends BaseScalar {
      * @param dashLine Line.
      * @return True of false.
      */
-    private boolean escapedSequenceScalar(final YamlLine dashLine) {
+    private Matcher escapedSequenceScalar(final YamlLine dashLine) {
         final String trimmed = dashLine.trimmed();
-        return trimmed.matches("^[ ]*\\-[ ]*\".*\"$")
-            || trimmed.matches("^[ ]*\\-[ ]*\'.*\'$");
+        return QUOTED_LITERAL_MAP_SEQ.matcher(trimmed);
     }
 }

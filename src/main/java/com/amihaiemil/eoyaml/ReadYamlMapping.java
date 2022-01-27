@@ -27,6 +27,8 @@
  */
 package com.amihaiemil.eoyaml;
 
+import static com.amihaiemil.eoyaml.YamlLine.UNKNOWN_LINE_NUMBER;
+
 import com.amihaiemil.eoyaml.exceptions.YamlReadingException;
 import java.util.*;
 import java.util.regex.Pattern;
@@ -76,6 +78,11 @@ final class ReadYamlMapping extends BaseYamlMapping {
     private final boolean guessIndentation;
 
     /**
+     * Where to stop looking for comments.
+     */
+    private final int commentStop;
+
+    /**
      * Ctor.
      * @param lines Given lines.
      */
@@ -93,30 +100,26 @@ final class ReadYamlMapping extends BaseYamlMapping {
         final AllYamlLines lines,
         final boolean guessIndentation
     ) {
-        this(new YamlLine.NullYamlLine(), lines, guessIndentation);
+        this(UNKNOWN_LINE_NUMBER, new YamlLine.NullYamlLine(), lines,
+            guessIndentation);
     }
 
     /**
      * Ctor.
-     * @param previous Line just before the start of this mapping.
-     * @param lines Given lines.
-     */
-    ReadYamlMapping(final YamlLine previous, final AllYamlLines lines) {
-        this(previous, lines, Boolean.FALSE);
-    }
-
-    /**
-     * Ctor.
+     * @checkstyle ParameterNumber (100 lines)
+     * @param commentStop Where to
      * @param previous Line just before the start of this mapping.
      * @param lines Given lines.
      * @param guessIndentation If true, we will try to guess the correct
      *  indentation of misplaced lines.
      */
     ReadYamlMapping(
+        final int commentStop,
         final YamlLine previous,
         final AllYamlLines lines,
         final boolean guessIndentation
     ) {
+        this.commentStop = commentStop;
         this.previous = previous;
         this.all = lines;
         this.significant = new SameIndentationLevel(
@@ -187,6 +190,7 @@ final class ReadYamlMapping extends BaseYamlMapping {
 
     @Override
     public Comment comment() {
+        boolean documentComment = this.previous.number() < 0;
         //@checkstyle LineLength (50 lines)
         return new ReadComment(
             new Backwards(
@@ -196,7 +200,7 @@ final class ReadYamlMapping extends BaseYamlMapping {
                             this.all,
                             line -> {
                                 final boolean skip;
-                                if(this.previous.number() < 0) {
+                                if(documentComment) {
                                     if(this.significant.iterator().hasNext()) {
                                         skip = line.number() >= this.significant
                                                 .iterator().next().number();
@@ -204,16 +208,16 @@ final class ReadYamlMapping extends BaseYamlMapping {
                                         skip = false;
                                     }
                                 } else {
-                                    skip = line.number() >= this.previous.number();
+                                    skip = line.number() >= commentStop;
                                 }
                                 return skip;
                             },
-                            line -> line.trimmed().startsWith("---"),
                             line -> line.trimmed().startsWith("..."),
                             line -> line.trimmed().startsWith("%"),
                             line -> line.trimmed().startsWith("!!")
                         )
-                    )
+                    ),
+                    documentComment
                 )
             ),
             this
@@ -237,19 +241,33 @@ final class ReadYamlMapping extends BaseYamlMapping {
         for(final String tryKey : keys) {
             for (final YamlLine line : this.significant) {
                 final String trimmed = line.trimmed();
-                if(trimmed.endsWith(tryKey + ":")
-                    || trimmed.matches("^" + Pattern.quote(tryKey) + "\\:[ ]*\\>$")
-                    || trimmed.matches("^" + Pattern.quote(tryKey) + "\\:[ ]*\\|$")
+                if(trimmed.matches("^-?[ ]*" + Pattern.quote(tryKey) + ":")
+                    || trimmed.matches("^" + Pattern.quote(tryKey) + ":[ ]*>$")
+                    || trimmed.matches("^" + Pattern.quote(tryKey) + ":[ ]*\\|[+-]?$")
                 ) {
                     value = this.significant.toYamlNode(
                         line, this.guessIndentation
                     );
+                } else if (trimmed.matches(tryKey + ":[ ]*\\{}")) {
+                    value = new EmptyYamlMapping(new ReadYamlMapping(
+                            line.number(),
+                            this.all.line(line.number()),
+                            this.all,
+                            this.guessIndentation
+                    ));
+                } else if (trimmed.matches(tryKey + ":[ ]*\\[]")) {
+                    value = new EmptyYamlSequence(new ReadYamlSequence(
+                            this.all.line(line.number()),
+                            this.all,
+                            this.guessIndentation
+                    ));
                 } else if((trimmed.startsWith(tryKey + ":")
-                    || trimmed.startsWith("- " + tryKey + ":"))
-                    && trimmed.length() > 1
+                        || trimmed.startsWith("- " + tryKey + ":"))
+                        && trimmed.length() > 1
                 ) {
                     value = new ReadPlainScalar(this.all, line);
                 }
+
                 if(value != null) {
                     return value;
                 }
@@ -291,7 +309,7 @@ final class ReadYamlMapping extends BaseYamlMapping {
                         throw new YamlReadingException(
                             "No value found for existing complex key: "
                           + System.lineSeparator()
-                          + ((BaseYamlNode) key).toString()
+                          + key.toString()
                         );
                     }
                     break;

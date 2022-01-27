@@ -27,8 +27,12 @@
  */
 package com.amihaiemil.eoyaml;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.*;
 
+import org.apache.commons.io.IOUtils;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Test;
@@ -56,8 +60,8 @@ public final class ReadLiteralBlockScalarTest {
             scalar.value(),
             Matchers.is(
             "First Line." + System.lineSeparator()
-                + "Second Line."+ System.lineSeparator()
-                + "Third Line."
+                + "Second Line." + System.lineSeparator()
+                + "Third Line." + System.lineSeparator()
             )
         );
     }
@@ -82,6 +86,42 @@ public final class ReadLiteralBlockScalarTest {
             Matchers.equalTo("Literal scalar as value in map")
         );
         MatcherAssert.assertThat(comment.yamlNode(), Matchers.is(scalar));
+    }
+
+    /**
+     * ReadLiteralBlockScalar can return properly indented values.
+     */
+    @Test
+    public void handlesIndenting() {
+        final List<YamlLine> lines = new ArrayList<>();
+        lines.add(new RtYamlLine("literal: |", 0));
+        lines.add(new RtYamlLine("  line 1", 1));
+        lines.add(new RtYamlLine("   line 2", 2));
+        lines.add(new RtYamlLine("  end", 3));
+        final ReadLiteralBlockScalar scalar =
+            new ReadLiteralBlockScalar(lines.get(0), new AllYamlLines(lines));
+        MatcherAssert.assertThat(
+            scalar.value(),
+            Matchers.equalTo("line 1\n line 2\nend\n")
+        );
+    }
+
+    /**
+     * ReadLiteralBlockScalar can return properly indented
+     * values and trailing spaces are preserved.
+     */
+    @Test
+    public void handlesTrailingSpaces() {
+        final List<YamlLine> lines = new ArrayList<>();
+        lines.add(new RtYamlLine("literal: |", 0));
+        lines.add(new RtYamlLine("  trailing spaces   ", 1));
+        lines.add(new RtYamlLine("  trailing tab\t", 2));
+        final ReadLiteralBlockScalar scalar =
+            new ReadLiteralBlockScalar(lines.get(0), new AllYamlLines(lines));
+        MatcherAssert.assertThat(
+            scalar.value(),
+            Matchers.equalTo("trailing spaces   \ntrailing tab\t\n")
+        );
     }
 
     /**
@@ -110,7 +150,7 @@ public final class ReadLiteralBlockScalarTest {
         lines.add(new RtYamlLine("Third Line.", 3));
         final ReadLiteralBlockScalar scalar =
             new ReadLiteralBlockScalar(new AllYamlLines(lines));
-        RtYamlSequence seq = new RtYamlSequence(new LinkedList<YamlNode>());
+        RtYamlSequence seq = new RtYamlSequence(new LinkedList<>());
         MatcherAssert.assertThat(scalar.compareTo(seq), Matchers.lessThan(0));
     }
 
@@ -123,7 +163,7 @@ public final class ReadLiteralBlockScalarTest {
         lines.add(new RtYamlLine("Java", 1));
         final ReadLiteralBlockScalar pipeScalar =
             new ReadLiteralBlockScalar(new AllYamlLines(lines));
-        final PlainStringScalar scalar = new PlainStringScalar("Java");
+        final PlainStringScalar scalar = new PlainStringScalar("Java\n");
         MatcherAssert.assertThat(pipeScalar.compareTo(scalar), Matchers.is(0));
     }
 
@@ -167,6 +207,47 @@ public final class ReadLiteralBlockScalarTest {
                 + "  Third Line"
                 + System.lineSeparator()
                 + "..."
+            )
+        );
+    }
+
+    /**
+     * Prints a block scalar from string.
+     * <br/>
+     * <a href="https://github.com/decorators-squad/eo-yaml/issues/480">
+     *     See bug</a>
+     * @throws IOException If something is wrong.
+     */
+    @Test
+    public void printsLiteralBlockScalarFromString() throws IOException {
+        final String input = readTestResource("issue_480_bug_printing.yml");
+
+        YamlMapping mapping = Yaml.createYamlInput(input, true)
+            .readYamlMapping();
+        MatcherAssert.assertThat(
+            mapping.string("test1"),
+            Matchers.equalTo("  this is a test message 1"
+                + System.lineSeparator())
+        );
+        MatcherAssert.assertThat(
+            mapping.string("test2"),
+            Matchers.equalTo("  this is a test message 2"
+                + System.lineSeparator())
+        );
+    }
+
+    /**
+     * Read a test resource file's contents.
+     * @param fileName File to read.
+     * @return File's contents as String.
+     * @throws FileNotFoundException If something is wrong.
+     * @throws IOException If something is wrong.
+     */
+    private String readTestResource(final String fileName)
+        throws FileNotFoundException, IOException {
+        return new String(
+            IOUtils.toByteArray(
+                new FileInputStream("src/test/resources/" + fileName)
             )
         );
     }

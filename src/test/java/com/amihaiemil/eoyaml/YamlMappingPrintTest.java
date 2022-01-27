@@ -127,6 +127,16 @@ public final class YamlMappingPrintTest {
                     .build()
             )
             .add(
+                "key6",
+                Yaml.createYamlMappingBuilder()
+                    .build()
+            )
+            .add(
+                "key7",
+                Yaml.createYamlSequenceBuilder()
+                    .build()
+            )
+            .add(
                 Yaml.createYamlSequenceBuilder()
                     .add("Atlanta Braves")
                     .add("New York Yankees")
@@ -153,7 +163,7 @@ public final class YamlMappingPrintTest {
     }
 
     /**
-     * An empty YamlSequence value is printed as null.
+     * An empty YamlSequence value is printed as empty sequence ([]).
      */
     @Test
     public void printsEmptySequenceAsNull() {
@@ -165,7 +175,7 @@ public final class YamlMappingPrintTest {
         final StringBuilder expected = new StringBuilder();
         expected
             .append("key: value1").append(System.lineSeparator())
-            .append("seq: null").append(System.lineSeparator())
+            .append("seq: []").append(System.lineSeparator())
             .append("anotherKey: value2");
         MatcherAssert.assertThat(
             map.toString(),
@@ -196,7 +206,7 @@ public final class YamlMappingPrintTest {
     }
 
     /**
-     * An empty YamlMapping value is printed as null.
+     * An empty YamlMapping value is printed as empty mapping ({}).
      */
     @Test
     public void printsEmptyMappingAsNull() {
@@ -208,7 +218,7 @@ public final class YamlMappingPrintTest {
         final StringBuilder expected = new StringBuilder();
         expected
             .append("key: value1").append(System.lineSeparator())
-            .append("map: null").append(System.lineSeparator())
+            .append("map: {}").append(System.lineSeparator())
             .append("anotherKey: value2");
         MatcherAssert.assertThat(
             map.toString(),
@@ -313,6 +323,64 @@ public final class YamlMappingPrintTest {
         );
     }
 
+    /**
+     * Duplication of the test case described https://github.com/decorators-squad/eo-yaml/issues/396 where a sequence
+     * inside a map duplicated the comment.
+     *
+     * @throws Exception If something goes wrong.
+     */
+    @Test
+    public void printsReadYamlDuplicatedComments() throws Exception {
+        final YamlMapping read = Yaml.createYamlInput(
+                new File("src/test/resources/printing_tests/yamlDuplicatedComments.txt")
+        ).readYamlMapping();
+        MatcherAssert.assertThat(
+                read.toString(),
+                Matchers.equalTo(
+                        this.readExpected("yamlDuplicatedCommentsRoundTrip.txt")
+                )
+        );
+    }
+
+    /**
+     * When a map and sequence .
+     *
+     * @throws Exception If something goes wrong.
+     */
+    @Test
+    public void printsReadYamlCommentsOnMapOrSequence() throws Exception {
+        final YamlMapping read = Yaml.createYamlInput(
+            new File(
+                "src/test/resources/printing_tests/yamlCommentsOnMapOrSeq.txt")
+        ).readYamlMapping();
+        MatcherAssert.assertThat(
+                read.toString(),
+                Matchers.equalTo(
+                        this.readExpected("yamlCommentsOnMapOrSeqRoundTrip.txt")
+                )
+        );
+    }
+
+    /**
+     * When on separate lines we can distinguish which node to apply the
+     * comment to.
+     *
+     * @throws Exception If something goes wrong.
+     */
+    @Test
+    public void printsReadYamlCommentsOnMapAndSequence() throws Exception {
+        final YamlMapping read = Yaml.createYamlInput(
+            new File(
+                "src/test/resources/printing_tests/yamlCommentsOnMapAndSeq.txt")
+        ).readYamlMapping();
+        MatcherAssert.assertThat(
+                read.toString(),
+                Matchers.equalTo(
+                        this.readExpected(
+                                "yamlCommentsOnMapAndSeqRoundTrip.txt")
+                )
+        );
+    }
 
     /**
      * Read a test resource file's contents.
