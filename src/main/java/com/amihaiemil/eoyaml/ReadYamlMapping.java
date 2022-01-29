@@ -279,6 +279,8 @@ final class ReadYamlMapping extends BaseYamlMapping {
                             this.all,
                             this.guessIndentation
                     ));
+                } else if (trimmed.matches(tryKey + ":[ ]+\\[.*\\]")) {
+                    value = new ReadSingleLineSequence(this.all, line, trimmed, false);
                 } else if((trimmed.startsWith(tryKey + ":")
                         || trimmed.startsWith("- " + tryKey + ":"))
                         && trimmed.length() > 1

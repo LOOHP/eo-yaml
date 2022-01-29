@@ -155,8 +155,14 @@ final class RtYamlPrinter implements YamlPrinter {
             }
             if (value instanceof Scalar) {
                 this.printNode(value, false, indentation);
-            } else  {
-                this.printNode(value, true, indentation + 2);
+            } else {
+                if (value instanceof ReadSingleLineSequence) {
+                    this.writer.append(" [");
+                    this.printNode(value, false, false, 0);
+                    this.writer.append("]");
+                } else {
+                    this.printNode(value, true, indentation + 2);
+                }
             }
             if(keysIt.hasNext()) {
                 this.writer.append(newLine);

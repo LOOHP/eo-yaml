@@ -151,8 +151,6 @@ final class ReadYamlSequence extends BaseYamlSequence {
                                     line, this.guessIndentation
                             )
                     );
-                } else if (trimmed.matches("-[ ]+\\[.*\\]")) {
-                    kids.add(new ReadSingleLineSequence(all, line, trimmed, false));
                 } else if (trimmed.matches("^-[ ]*\\{}")) {
                     kids.add(new EmptyYamlMapping(new ReadYamlMapping(
                             line.number(),
@@ -166,6 +164,8 @@ final class ReadYamlSequence extends BaseYamlSequence {
                             this.all,
                             this.guessIndentation
                     )));
+                } else if (trimmed.matches("-[ ]+\\[.*\\]")) {
+                    kids.add(new ReadSingleLineSequence(all, line, trimmed, false));
                 } else {
                     if(this.mappingStartsAtDash(line)) {
                         kids.add(
