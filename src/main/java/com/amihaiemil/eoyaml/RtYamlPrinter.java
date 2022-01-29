@@ -318,7 +318,11 @@ final class RtYamlPrinter implements YamlPrinter {
             } else if (node instanceof EmptyYamlMapping) {
                 this.writer.append(" ").append("{}");
             } else {
-                this.writer.append(" ").append("null");
+                if (node == null) {
+                    this.writer.append(" ").append("null");
+                } else {
+                    this.writer.append(" ").append("\"\"");
+                }
             }
         } else {
             if (onNewLine) {
