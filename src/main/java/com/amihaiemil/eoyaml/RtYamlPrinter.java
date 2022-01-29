@@ -426,7 +426,7 @@ final class RtYamlPrinter implements YamlPrinter {
                 if(value.contains("\"")) {
                     escaped = "'" + value + "'";
                 } else {
-                    escaped = "\"" + value + "\"";
+                    escaped = "\"" + value.replace("\\", "\\\\") + "\"";
                 }
             }
             return escaped;
